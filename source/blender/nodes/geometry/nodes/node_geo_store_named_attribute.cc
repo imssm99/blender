@@ -108,24 +108,31 @@ static void try_capture_field_on_geometry(GeometryComponent &component,
   evaluator.add_with_destination(field, GMutableSpan{type, buffer, domain_size});
   evaluator.evaluate();
 
-  attributes.remove(name);
   if (attributes.contains(name)) {
     GAttributeWriter write_attribute = attributes.lookup_for_write(name);
     if (write_attribute && write_attribute.domain == domain &&
         write_attribute.varray.type() == type) {
       write_attribute.varray.set_all(buffer);
       write_attribute.finish();
+
+      type.destruct_n(buffer, domain_size);
+      MEM_freeN(buffer);
+      return;
     }
     else {
-      /* Cannot change type of built-in attribute. */
+      attributes.remove(name);
+
+      if (attributes.contains(name)) {
+        /* Cannot change type of built-in attribute. */
+        type.destruct_n(buffer, domain_size);
+        MEM_freeN(buffer);
+        return;
+      }
     }
-    type.destruct_n(buffer, domain_size);
-    MEM_freeN(buffer);
   }
-  else {
-    if (!attributes.add(name, domain, data_type, bke::AttributeInitMove{buffer})) {
-      MEM_freeN(buffer);
-    }
+
+  if (!attributes.add(name, domain, data_type, bke::AttributeInitMove{buffer})) {
+    MEM_freeN(buffer);
   }
 }
 
