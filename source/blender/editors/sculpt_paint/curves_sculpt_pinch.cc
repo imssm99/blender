@@ -14,6 +14,7 @@
 #include "BKE_brush.h"
 #include "BKE_context.h"
 #include "BKE_curves.hh"
+#include "BKE_curves_constraints.hh"
 #include "BKE_paint.h"
 
 #include "DNA_brush_enums.h"
@@ -38,12 +39,14 @@
 
 namespace blender::ed::sculpt_paint {
 
+using bke::curves::ConstraintSolver;
+
 class PinchOperation : public CurvesSculptStrokeOperation {
  private:
   bool invert_pinch_;
 
   /** Solver for length and contact constraints. */
-  CurvesConstraintSolver constraint_solver_;
+  ConstraintSolver constraint_solver_;
 
   /** Only used when a 3D brush is used. */
   CurvesBrush3D brush_3d_;

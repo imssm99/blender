@@ -19,6 +19,7 @@
 #include "BKE_bvhutils.h"
 #include "BKE_context.h"
 #include "BKE_curves.hh"
+#include "BKE_curves_constraints.hh"
 #include "BKE_mesh.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_paint.h"
@@ -50,6 +51,7 @@
 namespace blender::ed::sculpt_paint {
 
 using blender::bke::CurvesGeometry;
+using blender::bke::curves::ConstraintSolver;
 using threading::EnumerableThreadSpecific;
 
 /**
@@ -64,7 +66,7 @@ class CombOperation : public CurvesSculptStrokeOperation {
   CurvesBrush3D brush_3d_;
 
   /** Solver for length and contact constraints. */
-  CurvesConstraintSolver constraint_solver_;
+  ConstraintSolver constraint_solver_;
 
   friend struct CombOperationExecutor;
 

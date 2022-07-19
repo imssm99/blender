@@ -4,6 +4,7 @@
 #include "BKE_brush.h"
 #include "BKE_bvhutils.h"
 #include "BKE_context.h"
+#include "BKE_curves_constraints.hh"
 #include "BKE_mesh.h"
 #include "BKE_mesh_runtime.h"
 
@@ -24,13 +25,15 @@
 
 namespace blender::ed::sculpt_paint {
 
+using bke::curves::ConstraintSolver;
+
 class PuffOperation : public CurvesSculptStrokeOperation {
  private:
   /** Only used when a 3D brush is used. */
   CurvesBrush3D brush_3d_;
 
   /** Solver for length and contact constraints. */
-  CurvesConstraintSolver constraint_solver_;
+  ConstraintSolver constraint_solver_;
 
   friend struct PuffOperationExecutor;
 

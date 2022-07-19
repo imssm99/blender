@@ -1,6 +1,10 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "curves_sculpt_intern.hh"
+/** \file
+ * \ingroup bke
+ */
+
+#include "BKE_curves_constraints.hh"
 
 #include "BLI_index_mask_ops.hh"
 
@@ -9,43 +13,44 @@
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
+#include "DNA_object_types.h"
 
-namespace blender::ed::sculpt_paint {
+namespace blender::bke::curves {
 
 using blender::bke::CurvesGeometry;
 using threading::EnumerableThreadSpecific;
 
-int CurvesConstraintSolver::solver_iterations() const
+int ConstraintSolver::solver_iterations() const
 {
   return solver_iterations_;
 }
 
-void CurvesConstraintSolver::set_solver_iterations(int solver_iterations)
+void ConstraintSolver::set_solver_iterations(int solver_iterations)
 {
   solver_iterations_ = solver_iterations;
 }
 
-int CurvesConstraintSolver::max_contacts_per_point() const
+int ConstraintSolver::max_contacts_per_point() const
 {
   return max_contacts_per_point_;
 }
 
-void CurvesConstraintSolver::set_max_contacts_per_point(int max_contacts_per_point)
+void ConstraintSolver::set_max_contacts_per_point(int max_contacts_per_point)
 {
   max_contacts_per_point_ = max_contacts_per_point;
 }
 
-float CurvesConstraintSolver::default_curve_radius() const
+float ConstraintSolver::default_curve_radius() const
 {
   return default_curve_radius_;
 }
 
-void CurvesConstraintSolver::set_default_curve_radius(float default_curve_radius)
+void ConstraintSolver::set_default_curve_radius(float default_curve_radius)
 {
   default_curve_radius_ = default_curve_radius;
 }
 
-void CurvesConstraintSolver::initialize(const CurvesGeometry *curves)
+void ConstraintSolver::initialize(const CurvesGeometry *curves)
 {
   Span<float3> positions_cu = curves->positions();
 
@@ -69,13 +74,13 @@ void CurvesConstraintSolver::initialize(const CurvesGeometry *curves)
   contacts_.reinitialize(max_contacts_per_point_ * curves->points_num());
 }
 
-void CurvesConstraintSolver::find_contact_points(const Depsgraph *depsgraph,
-                                                 Object *object,
-                                                 const CurvesGeometry *curves,
-                                                 const Object *surface_ob,
-                                                 const CurvesSurfaceTransforms &transforms,
-                                                 Span<float3> orig_positions,
-                                                 Span<int> changed_curves)
+void ConstraintSolver::find_contact_points(const Depsgraph *depsgraph,
+                                           Object *object,
+                                           const CurvesGeometry *curves,
+                                           const Object *surface_ob,
+                                           const CurvesSurfaceTransforms &transforms,
+                                           Span<float3> orig_positions,
+                                           Span<int> changed_curves)
 {
   /* Should be set when initializing constraints */
   BLI_assert(contacts_num_.size() == curves->points_num());
@@ -150,9 +155,9 @@ void CurvesConstraintSolver::find_contact_points(const Depsgraph *depsgraph,
                 }
                 if (insert_i >= 0) {
                   contacts[insert_i] = Contact{dist_cu,
-                                                transforms.surface_to_curves_normal *
-                                                    float3{hit.no},
-                                                transforms.surface_to_curves * float3{hit.co}};
+                                               transforms.surface_to_curves_normal *
+                                                   float3{hit.no},
+                                               transforms.surface_to_curves * float3{hit.co}};
                 }
               }
             });
@@ -161,8 +166,7 @@ void CurvesConstraintSolver::find_contact_points(const Depsgraph *depsgraph,
   });
 }
 
-void CurvesConstraintSolver::solve_constraints(
-    CurvesGeometry *curves, Span<int> changed_curves) const
+void ConstraintSolver::solve_constraints(CurvesGeometry *curves, Span<int> changed_curves) const 
 {
   /* Gauss-Seidel method for solving length and contact constraints.
    * See for example "Position-Based Simulation Methods in Computer Graphics"
@@ -188,8 +192,8 @@ void CurvesConstraintSolver::solve_constraints(
                                  contacts_num);
           for (const Contact &c : contacts) {
             /* Lagrange multiplier for solving a single contact constraint.
-              * Note: The contact point is already offset from the surface by the radius due to the raycast callback,
-              *       no need to subtract the radius from lambda. */
+             * Note: The contact point is already offset from the surface by the radius due to the
+             * raycast callback, no need to subtract the radius from lambda. */
             const float lambda = dot_v3v3(p - c.point_, c.normal_);
             if (lambda < 0.0f) {
               p -= lambda * c.normal_;
@@ -209,4 +213,4 @@ void CurvesConstraintSolver::solve_constraints(
   });
 }
 
-}  // namespace blender::ed::sculpt_paint
+}  // namespace blender::bke::curves
