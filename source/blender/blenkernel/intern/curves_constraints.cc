@@ -50,14 +50,14 @@ void ConstraintSolver::set_default_curve_radius(float default_curve_radius)
   default_curve_radius_ = default_curve_radius;
 }
 
-void ConstraintSolver::initialize(const CurvesGeometry *curves)
+void ConstraintSolver::initialize(const CurvesGeometry &curves)
 {
-  Span<float3> positions_cu = curves->positions();
+  Span<float3> positions_cu = curves.positions();
 
-  segment_lengths_cu_.reinitialize(curves->points_num());
-  threading::parallel_for(curves->curves_range(), 128, [&](const IndexRange range) {
+  segment_lengths_cu_.reinitialize(curves.points_num());
+  threading::parallel_for(curves.curves_range(), 128, [&](const IndexRange range) {
     for (const int curve_i : range) {
-      const IndexRange points = curves->points_for_curve(curve_i);
+      const IndexRange points = curves.points_for_curve(curve_i);
 
       float length_cu = 0.0f, prev_length_cu;
       for (const int point_i : points.drop_back(1)) {
@@ -70,8 +70,8 @@ void ConstraintSolver::initialize(const CurvesGeometry *curves)
     }
   });
 
-  contacts_num_.reinitialize(curves->points_num());
-  contacts_.reinitialize(max_contacts_per_point_ * curves->points_num());
+  contacts_num_.reinitialize(curves.points_num());
+  contacts_.reinitialize(max_contacts_per_point_ * curves.points_num());
 }
 
 void ConstraintSolver::find_contact_points(const Depsgraph *depsgraph,
@@ -166,7 +166,7 @@ void ConstraintSolver::find_contact_points(const Depsgraph *depsgraph,
   });
 }
 
-void ConstraintSolver::solve_constraints(CurvesGeometry *curves, Span<int> changed_curves) const 
+void ConstraintSolver::solve_constraints(CurvesGeometry &curves, VArray<int> changed_curves) const 
 {
   /* Gauss-Seidel method for solving length and contact constraints.
    * See for example "Position-Based Simulation Methods in Computer Graphics"
@@ -174,13 +174,14 @@ void ConstraintSolver::solve_constraints(CurvesGeometry *curves, Span<int> chang
    */
 
   const Span<float> expected_lengths_cu = segment_lengths_cu_;
-  MutableSpan<float3> positions_cu = curves->positions_for_write();
-  VArray<float> radius = curves->attributes().lookup_or_default<float>(
+  MutableSpan<float3> positions_cu = curves.positions_for_write();
+  VArray<float> radius = curves.attributes().lookup_or_default<float>(
       "radius", ATTR_DOMAIN_POINT, default_curve_radius_);
 
   threading::parallel_for(changed_curves.index_range(), 256, [&](const IndexRange range) {
-    for (const int curve_i : changed_curves.slice(range)) {
-      const IndexRange points = curves->points_for_curve(curve_i);
+    for (const int i : range) {
+      const int curve_i = changed_curves[i];
+      const IndexRange points = curves.points_for_curve(curve_i);
 
       /* First point is anchored to surface, contact and length constraints to no apply. */
       for (const int point_i : points.drop_front(1)) {

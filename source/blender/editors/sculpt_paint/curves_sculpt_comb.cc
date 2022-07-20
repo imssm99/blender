@@ -144,7 +144,7 @@ struct CombOperationExecutor {
       if (falloff_shape_ == PAINT_FALLOFF_SHAPE_SPHERE) {
         this->initialize_spherical_brush_reference_point();
       }
-      self_->constraint_solver_.initialize(curves_);
+      self_->constraint_solver_.initialize(*curves_);
       /* Combing does nothing when there is no mouse movement, so return directly. */
       return;
     }
@@ -172,7 +172,7 @@ struct CombOperationExecutor {
                                                     orig_positions_,
                                                     changed_curves);
 
-      self_->constraint_solver_.solve_constraints(curves_, changed_curves);
+      self_->constraint_solver_.solve_constraints(*curves_, VArray<int>::ForContainer(changed_curves));
     });
 
     curves_->tag_positions_changed();

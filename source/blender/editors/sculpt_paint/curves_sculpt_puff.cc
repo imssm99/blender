@@ -142,7 +142,7 @@ struct PuffOperationExecutor {
                          BKE_mesh_runtime_looptri_len(surface_)};
 
     if (stroke_extension.is_first) {
-      self_->constraint_solver_.initialize(curves_);
+      self_->constraint_solver_.initialize(*curves_);
 
       if (falloff_shape_ == PAINT_FALLOFF_SHAPE_SPHERE) {
         self.brush_3d_ = *sample_curves_3d_brush(*ctx_.depsgraph,
@@ -189,7 +189,7 @@ struct PuffOperationExecutor {
                                                   orig_positions_,
                                                   changed_curves_indices);
 
-    self_->constraint_solver_.solve_constraints(curves_, changed_curves_indices);
+    self_->constraint_solver_.solve_constraints(*curves_, VArray<int>::ForContainer(changed_curves_indices));
 
     curves_->tag_positions_changed();
     DEG_id_tag_update(&curves_id_->id, ID_RECALC_GEOMETRY);

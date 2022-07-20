@@ -2,8 +2,6 @@
 
 #pragma once
 
-#include "BLI_enumerable_thread_specific.hh"
-
 #include "BKE_bvhutils.h"
 #include "BKE_curves.hh"
 
@@ -50,7 +48,7 @@ class ConstraintSolver {
   /* Remember the initial length of all curve segments. This allows restoring the length after
    * combing.
    */
-  void initialize(const CurvesGeometry *curves);
+  void initialize(const CurvesGeometry &curves);
 
   void find_contact_points(const Depsgraph *depsgraph,
                            Object *object,
@@ -63,7 +61,17 @@ class ConstraintSolver {
   /**
    * Satisfy constraints on curve points based on initial deformation.
    */
-  void solve_constraints(CurvesGeometry *curves, Span<int> changed_curves) const;
+  void solve_constraints(CurvesGeometry &curves, VArray<int> changed_curves) const;
+
+  /**
+   * Satisfy constraints on curve points based on initial deformation.
+   */
+  inline void solve_constraints(CurvesGeometry &curves, IndexRange changed_curves) const
+  {
+    solve_constraints(curves,
+                      VArray<int>::ForFunc(changed_curves.size(),
+                                           [changed_curves](int64_t i) { return (int)i; }));
+  }
 };
 
 }  // namespace blender::bke::curves
