@@ -164,15 +164,13 @@ struct CombOperationExecutor {
     }
 
     threading::parallel_for_each(changed_curves, [&](const Vector<int> &changed_curves) {
-      self_->constraint_solver_.find_contact_points(ctx_.depsgraph,
-                                                    object_,
-                                                    curves_,
-                                                    curves_id_->surface,
-                                                    transforms_,
-                                                    orig_positions_,
-                                                    changed_curves);
-
-      self_->constraint_solver_.solve_constraints(*curves_, VArray<int>::ForContainer(changed_curves));
+      self_->constraint_solver_.step(*ctx_.depsgraph,
+                                     *object_,
+                                     *curves_,
+                                     curves_id_->surface,
+                                     transforms_,
+                                     orig_positions_,
+                                     VArray<int>::ForContainer(changed_curves));
     });
 
     curves_->tag_positions_changed();

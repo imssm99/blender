@@ -155,15 +155,13 @@ struct PinchOperationExecutor {
       }
     }
 
-    self_->constraint_solver_.find_contact_points(ctx_.depsgraph,
-                                                  object_,
-                                                  curves_,
-                                                  curves_id_->surface,
-                                                  transforms_,
-                                                  orig_positions_,
-                                                  changed_curves_indices);
-
-    self_->constraint_solver_.solve_constraints(*curves_, VArray<int>::ForContainer(changed_curves_indices));
+    self_->constraint_solver_.step(*ctx_.depsgraph,
+                                   *object_,
+                                   *curves_,
+                                   curves_id_->surface,
+                                   transforms_,
+                                   orig_positions_,
+                                   VArray<int>::ForContainer(changed_curves_indices));
 
     curves_->tag_positions_changed();
     DEG_id_tag_update(&curves_id_->id, ID_RECALC_GEOMETRY);
