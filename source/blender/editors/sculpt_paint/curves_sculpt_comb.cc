@@ -163,15 +163,15 @@ struct CombOperationExecutor {
       BLI_assert_unreachable();
     }
 
-    threading::parallel_for_each(changed_curves, [&](const Vector<int> &changed_curves) {
+    for (auto curves : changed_curves) {
       self_->constraint_solver_.step(*ctx_.depsgraph,
                                      *object_,
                                      *curves_,
                                      curves_id_->surface,
                                      transforms_,
                                      orig_positions_,
-                                     VArray<int>::ForContainer(changed_curves));
-    });
+                                     VArray<int>::ForSpan(curves));
+    }
 
     curves_->tag_positions_changed();
     DEG_id_tag_update(&curves_id_->id, ID_RECALC_GEOMETRY);
