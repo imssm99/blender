@@ -160,7 +160,7 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
     DEG_add_object_relation(ctx->node, mmd->object, DEG_OB_COMP_GEOMETRY, "Mesh Deform Modifier");
   }
   /* We need own transformation as well. */
-  DEG_add_modifier_to_transform_relation(ctx->node, "Mesh Deform Modifier");
+  DEG_add_depends_on_transform_relation(ctx->node, "Mesh Deform Modifier");
 }
 
 static float meshdeform_dynamic_bind(MeshDeformModifierData *mmd, float (*dco)[3], float vec[3])
@@ -353,7 +353,7 @@ static void meshdeformModifier_do(ModifierData *md,
    * We'll support this case once granular dependency graph is landed.
    */
   Object *ob_target = mmd->object;
-  cagemesh = BKE_modifier_get_evaluated_mesh_from_evaluated_object(ob_target, false);
+  cagemesh = BKE_modifier_get_evaluated_mesh_from_evaluated_object(ob_target);
   if (cagemesh == NULL) {
     BKE_modifier_set_error(ctx->object, md, "Cannot get mesh from cage object");
     return;

@@ -6,6 +6,7 @@
  * \ingroup bke
  */
 
+#include "BLI_compiler_attrs.h"
 #include "BLI_utildefines.h"
 
 #include "BLI_rect.h"
@@ -363,14 +364,7 @@ bool BKE_image_remove_tile(struct Image *ima, struct ImageTile *tile);
 void BKE_image_reassign_tile(struct Image *ima, struct ImageTile *tile, int new_tile_number);
 void BKE_image_sort_tiles(struct Image *ima);
 
-bool BKE_image_fill_tile(struct Image *ima,
-                         struct ImageTile *tile,
-                         int width,
-                         int height,
-                         const float color[4],
-                         int gen_type,
-                         int planes,
-                         bool is_float);
+bool BKE_image_fill_tile(struct Image *ima, struct ImageTile *tile);
 
 typedef enum {
   UDIM_TILE_FORMAT_NONE = 0,
@@ -422,9 +416,13 @@ int BKE_image_get_tile_from_pos(struct Image *ima,
 void BKE_image_get_tile_uv(const struct Image *ima, const int tile_number, float r_uv[2]);
 
 /**
- * Return the tile_number for the closest UDIM tile.
+ * Return the tile_number for the closest UDIM tile to `co`.
  */
-int BKE_image_find_nearest_tile(const struct Image *image, const float co[2]);
+int BKE_image_find_nearest_tile_with_offset(const struct Image *image,
+                                            const float co[2],
+                                            float r_uv_offset[2]) ATTR_NONNULL(1, 2, 3);
+int BKE_image_find_nearest_tile(const struct Image *image, const float co[2])
+    ATTR_NONNULL(1, 2) ATTR_WARN_UNUSED_RESULT;
 
 void BKE_image_get_size(struct Image *image, struct ImageUser *iuser, int *r_width, int *r_height);
 void BKE_image_get_size_fl(struct Image *image, struct ImageUser *iuser, float r_size[2]);

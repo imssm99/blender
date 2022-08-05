@@ -27,6 +27,7 @@
 #include "DNA_collection_types.h"
 #include "DNA_constraint_types.h"
 #include "DNA_curve_types.h"
+#include "DNA_curves_types.h"
 #include "DNA_effect_types.h"
 #include "DNA_gpencil_types.h"
 #include "DNA_key_types.h"
@@ -238,13 +239,8 @@ DepsgraphRelationBuilder::DepsgraphRelationBuilder(Main *bmain,
 {
 }
 
-TimeSourceNode *DepsgraphRelationBuilder::get_node(const TimeSourceKey &key) const
+TimeSourceNode *DepsgraphRelationBuilder::get_node(const TimeSourceKey & /*key*/) const
 {
-  if (key.id) {
-    /* XXX TODO */
-    return nullptr;
-  }
-
   return graph_->time_source;
 }
 
@@ -297,8 +293,8 @@ bool DepsgraphRelationBuilder::has_node(const OperationKey &key) const
   return find_node(key) != nullptr;
 }
 
-void DepsgraphRelationBuilder::add_modifier_to_transform_relation(const DepsNodeHandle *handle,
-                                                                  const char *description)
+void DepsgraphRelationBuilder::add_depends_on_transform_relation(const DepsNodeHandle *handle,
+                                                                 const char *description)
 {
   IDNode *id_node = handle->node->owner->owner;
   ID *id = id_node->id_orig;
@@ -692,7 +688,7 @@ void DepsgraphRelationBuilder::build_object(Object *object)
 
   const BuilderStack::ScopedEntry stack_entry = stack_.trace(object->id);
 
-  /* Object Transforms */
+  /* Object Transforms. */
   OperationCode base_op = (object->parent) ? OperationCode::TRANSFORM_PARENT :
                                              OperationCode::TRANSFORM_LOCAL;
   OperationKey base_op_key(&object->id, NodeType::TRANSFORM, base_op);
@@ -705,9 +701,12 @@ void DepsgraphRelationBuilder::build_object(Object *object)
   OperationKey final_transform_key(
       &object->id, NodeType::TRANSFORM, OperationCode::TRANSFORM_FINAL);
   OperationKey ob_eval_key(&object->id, NodeType::TRANSFORM, OperationCode::TRANSFORM_EVAL);
+
   add_relation(init_transform_key, local_transform_key, "Transform Init");
+
   /* Various flags, flushing from bases/collections. */
   build_object_layer_component_relations(object);
+
   /* Parenting. */
   if (object->parent != nullptr) {
     /* Make sure parent object's relations are built. */
@@ -717,30 +716,35 @@ void DepsgraphRelationBuilder::build_object(Object *object)
     /* Local -> parent. */
     add_relation(local_transform_key, parent_transform_key, "ObLocal -> ObParent");
   }
+
   /* Modifiers. */
   if (object->modifiers.first != nullptr) {
     BuilderWalkUserData data;
     data.builder = this;
     BKE_modifiers_foreach_ID_link(object, modifier_walk, &data);
   }
+
   /* Grease Pencil Modifiers. */
   if (object->greasepencil_modifiers.first != nullptr) {
     BuilderWalkUserData data;
     data.builder = this;
     BKE_gpencil_modifiers_foreach_ID_link(object, modifier_walk, &data);
   }
+
   /* Shader FX. */
   if (object->shader_fx.first != nullptr) {
     BuilderWalkUserData data;
     data.builder = this;
     BKE_shaderfx_foreach_ID_link(object, modifier_walk, &data);
   }
+
   /* Constraints. */
   if (object->constraints.first != nullptr) {
     BuilderWalkUserData data;
     data.builder = this;
     BKE_constraints_id_loop(&object->constraints, constraint_walk, &data);
   }
+
   /* Object constraints. */
   OperationKey object_transform_simulation_init_key(
       &object->id, NodeType::TRANSFORM, OperationCode::TRANSFORM_SIMULATION_INIT);
@@ -767,32 +771,48 @@ void DepsgraphRelationBuilder::build_object(Object *object)
                  final_transform_key,
                  "Simulation -> Final Transform");
   }
+
   build_idproperties(object->id.properties);
+
   /* Animation data */
   build_animdata(&object->id);
+
   /* Object data. */
   build_object_data(object);
+
   /* Particle systems. */
   if (object->particlesystem.first != nullptr) {
     build_particle_systems(object);
   }
+
   /* Force field Texture. */
   if ((object->pd != nullptr) && (object->pd->forcefield == PFIELD_TEXTURE) &&
       (object->pd->tex != nullptr)) {
     build_texture(object->pd->tex);
   }
+
   /* Object dupligroup. */
   if (object->instance_collection != nullptr) {
     build_collection(nullptr, object, object->instance_collection);
   }
+
   /* Point caches. */
   build_object_pointcache(object);
+
   /* Synchronization back to original object. */
   OperationKey synchronize_key(
       &object->id, NodeType::SYNCHRONIZATION, OperationCode::SYNCHRONIZE_TO_ORIGINAL);
   add_relation(final_transform_key, synchronize_key, "Synchronize to Original");
+
   /* Parameters. */
   build_parameters(&object->id);
+
+  /* Visibility.
+   * Evaluate visibility node after the object's base_flags has been updated to the current state
+   * of collections restrict and object's restrict flags. */
+  const ComponentKey object_from_layer_entry_key(&object->id, NodeType::OBJECT_FROM_LAYER);
+  const ComponentKey visibility_key(&object->id, NodeType::VISIBILITY);
+  add_relation(object_from_layer_entry_key, visibility_key, "Object Visibility");
 }
 
 /* NOTE: Implies that the object has base in the current view layer. */
@@ -1952,7 +1972,6 @@ void DepsgraphRelationBuilder::build_rigidbody(Scene *scene)
 
 void DepsgraphRelationBuilder::build_particle_systems(Object *object)
 {
-  TimeSourceKey time_src_key;
   OperationKey obdata_ubereval_key(&object->id, NodeType::GEOMETRY, OperationCode::GEOMETRY_EVAL);
   OperationKey eval_init_key(
       &object->id, NodeType::PARTICLE_SYSTEM, OperationCode::PARTICLE_SYSTEM_INIT);
@@ -2173,8 +2192,7 @@ void DepsgraphRelationBuilder::build_object_data_geometry(Object *object)
    * data mask to be used. We add relation here to ensure object is never
    * evaluated prior to Scene's CoW is ready. */
   OperationKey scene_key(&scene_->id, NodeType::PARAMETERS, OperationCode::SCENE_EVAL);
-  Relation *rel = add_relation(scene_key, obdata_ubereval_key, "CoW Relation");
-  rel->flag |= RELATION_FLAG_NO_FLUSH;
+  add_relation(scene_key, obdata_ubereval_key, "CoW Relation", RELATION_FLAG_NO_FLUSH);
   /* Modifiers */
   if (object->modifiers.first != nullptr) {
     ModifierUpdateDepsgraphContext ctx = {};
@@ -2239,12 +2257,7 @@ void DepsgraphRelationBuilder::build_object_data_geometry(Object *object)
     // add geometry collider relations
   }
   /* Make sure uber update is the last in the dependencies. */
-  if (object->type != OB_ARMATURE) {
-    /* Armatures does no longer require uber node. */
-    OperationKey obdata_ubereval_key(
-        &object->id, NodeType::GEOMETRY, OperationCode::GEOMETRY_EVAL);
-    add_relation(geom_init_key, obdata_ubereval_key, "Object Geometry UberEval");
-  }
+  add_relation(geom_init_key, obdata_ubereval_key, "Object Geometry UberEval");
   if (object->type == OB_MBALL) {
     Object *mom = BKE_mball_basis_find(scene_, object);
     ComponentKey mom_geom_key(&mom->id, NodeType::GEOMETRY);
@@ -2402,8 +2415,16 @@ void DepsgraphRelationBuilder::build_object_data_geometry_datablock(ID *obdata)
       }
       break;
     }
-    case ID_CV:
+    case ID_CV: {
+      Curves *curves_id = reinterpret_cast<Curves *>(obdata);
+      if (curves_id->surface != nullptr) {
+        build_object(curves_id->surface);
+
+        /* The relations between the surface and the curves are handled as part of the modifier
+         * stack building. */
+      }
       break;
+    }
     case ID_PT:
       break;
     case ID_VO: {
@@ -2460,7 +2481,10 @@ void DepsgraphRelationBuilder::build_camera(Camera *camera)
     ComponentKey dof_ob_key(&camera->dof.focus_object->id, NodeType::TRANSFORM);
     add_relation(dof_ob_key, camera_parameters_key, "Camera DOF");
     if (camera->dof.focus_subtarget[0]) {
-      OperationKey target_key(&camera->dof.focus_object->id, NodeType::BONE, camera->dof.focus_subtarget, OperationCode::BONE_DONE);
+      OperationKey target_key(&camera->dof.focus_object->id,
+                              NodeType::BONE,
+                              camera->dof.focus_subtarget,
+                              OperationCode::BONE_DONE);
       add_relation(target_key, camera_parameters_key, "Camera DOF subtarget");
     }
   }
@@ -3062,7 +3086,6 @@ void DepsgraphRelationBuilder::build_copy_on_write_relations(IDNode *id_node)
     return;
   }
 
-  TimeSourceKey time_source_key;
   OperationKey copy_on_write_key(id_orig, NodeType::COPY_ON_WRITE, OperationCode::COPY_ON_WRITE);
   /* XXX: This is a quick hack to make Alt-A to work. */
   // add_relation(time_source_key, copy_on_write_key, "Fluxgate capacitor hack");
