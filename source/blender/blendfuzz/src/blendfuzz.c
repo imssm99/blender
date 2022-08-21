@@ -18,13 +18,16 @@ int main(int argc, char** argv) {
         return 0;
     }
 
-    if(strcmp(argv[1], "imbuf") == 0) {
-        const int file = BLI_open(argv[2], O_BINARY | O_RDONLY, 0);
+    char *option = argv[1];
+    char *filename = argv[2];
+
+    if(strcmp(option, "imbuf") == 0) {
+        const int file = BLI_open(filename, O_BINARY | O_RDONLY, 0);
         if(file == -1) {
             printf("ERR\n");
             return 1;
         }
-        ImBuf *imbuf = IMB_loadifffile(file, argv[2], IB_rect, NULL, argv[2]);
+        ImBuf *imbuf = IMB_loadifffile(file, filename, IB_rect, NULL, filename);
         if(imbuf == NULL) {
             printf("ERR\n");
             close(file);
@@ -33,11 +36,8 @@ int main(int argc, char** argv) {
         close(file);
     }
 
-    /*
-    else if(strcmp()) {
-
-    }
-    */
+    //else if(strcmp()) {
+    //}
 
     return 0;
 }
