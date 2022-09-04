@@ -29,6 +29,7 @@
 #include "BKE_blender_copybuffer.h"
 #include "BKE_context.h"
 #include "BKE_idtype.h"
+#include "BKE_layer.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_override.h"
 #include "BKE_lib_query.h"
@@ -64,6 +65,8 @@
 #include "tree/tree_iterator.hh"
 
 using namespace blender::ed::outliner;
+
+namespace blender::ed::outliner {
 
 static void outliner_show_active(SpaceOutliner *space_outliner,
                                  ARegion *region,
@@ -1263,7 +1266,7 @@ static TreeElement *outliner_show_active_get_element(bContext *C,
 {
   TreeElement *te;
 
-  Object *obact = OBACT(view_layer);
+  Object *obact = BKE_view_layer_active_object_get(view_layer);
 
   if (!obact) {
     return nullptr;
@@ -2230,3 +2233,5 @@ void OUTLINER_OT_orphans_purge(wmOperatorType *ot)
 }
 
 /** \} */
+
+}  // namespace blender::ed::outliner
